@@ -1,55 +1,58 @@
 """
 Lab 11 — Helper Utilities
 """
-from google.genai import types
+import json
+from pathlib import Path
+from typing import Any
+
+from openai import OpenAI
+
+from core.config import openai_model, setup_api_key
 
 
-async def chat_with_agent(agent, runner, user_message: str, session_id=None):
-    """Send a message to the agent and get the response.
+def create_openai_client() -> OpenAI:
+    """Create an authenticated OpenAI client for later pipeline phases."""
 
-    Args:
-        agent: The LlmAgent instance
-        runner: The InMemoryRunner instance
-        user_message: Plain text message to send
-        session_id: Optional session ID to continue a conversation
+    return OpenAI(api_key=setup_api_key())
 
-    Returns:
-        Tuple of (response_text, session)
+
+def model_settings() -> dict[str, Any]:
+    """Return shared model settings so notebooks and modules stay aligned."""
+
+    return {
+        "model": openai_model(),
+        "temperature": 0.2,
+    }
+
+
+def export_json(data: Any, filepath: str | Path) -> Path:
+    """Write structured data to JSON for audit and reporting artifacts."""
+
+    output_path = Path(filepath)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False, default=str)
+    return output_path
+
+
+def preview_text(text: str, max_length: int = 120) -> str:
+    """Return a compact preview string for notebook tables and logs."""
+
+    collapsed = " ".join(text.split())
+    if len(collapsed) <= max_length:
+        return collapsed
+    return f"{collapsed[: max_length - 3]}..."
+
+
+async def chat_with_agent(*args, **kwargs):
+    """Compatibility stub for older Google-ADK-based lab modules.
+
+    Some untouched lab files still import ``chat_with_agent``. Raising a clear
+    error is safer than failing with an opaque import issue, and later phases
+    can replace those modules with OpenAI-native implementations.
     """
-    user_id = "student"
-    app_name = runner.app_name
 
-    session = None
-    if session_id is not None:
-        try:
-            session = await runner.session_service.get_session(
-                app_name=app_name, user_id=user_id, session_id=session_id
-            )
-        except (ValueError, KeyError):
-            pass
-
-    if session is None:
-        try:
-            session = await runner.session_service.create_session(
-                app_name=app_name, user_id=user_id
-            )
-        except Exception:
-            session = await runner.session_service.create_session(
-                app_name=app_name, user_id=user_id
-            )
-
-    content = types.Content(
-        role="user",
-        parts=[types.Part.from_text(text=user_message)],
+    raise NotImplementedError(
+        "chat_with_agent is part of the old Google ADK path and is not used in the "
+        "Pure Python + OpenAI assignment implementation."
     )
-
-    final_response = ""
-    async for event in runner.run_async(
-        user_id=user_id, session_id=session.id, new_message=content
-    ):
-        if hasattr(event, "content") and event.content and event.content.parts:
-            for part in event.content.parts:
-                if hasattr(part, "text") and part.text:
-                    final_response += part.text
-
-    return final_response, session
