@@ -1,4 +1,6 @@
 from core.config import ALLOWED_TOPICS, BLOCKED_TOPICS, openai_model, setup_api_key
+from core.audit import AuditEntry, AuditLogger
+from core.monitoring import CombinedMonitor, MonitoringAlert
 from core.pipeline import (
     DefensePipeline,
     InMemoryMonitor,
